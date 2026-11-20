@@ -3,119 +3,247 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Stoa on Robinhood Chain · Public Analytics</title>
+<title>Stoa Analytics Dashboard V1 · Robinhood Chain</title>
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
 <style>
-  :root { color-scheme: dark; }
-  body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#0b0d12; color:#e8ebf2; }
-  header { padding:24px; border-bottom:1px solid #1d2230; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
-  h1 { font-size:20px; margin:0; }
-  .muted { color:#8b93a7; font-size:13px; }
-  main { padding:24px; max-width:1100px; margin:0 auto; display:grid; gap:20px; }
-  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; }
-  .card { background:#131722; border:1px solid #1d2230; border-radius:14px; padding:18px; }
-  .card .label { color:#8b93a7; font-size:12px; text-transform:uppercase; letter-spacing:.06em; }
-  .card .value { font-size:26px; font-weight:650; margin-top:6px; }
-  table { width:100%; border-collapse:collapse; font-size:14px; }
-  th, td { text-align:left; padding:10px 8px; border-bottom:1px solid #1d2230; }
-  th { color:#8b93a7; font-weight:500; }
-  a { color:#7aa2ff; }
-  .swap { background:#131722; border:1px solid #1d2230; border-radius:14px; padding:18px; display:grid; gap:12px; }
-  input { background:#0b0d12; color:#e8ebf2; border:1px solid #2a3145; border-radius:10px; padding:10px; font-size:14px; }
-  button { background:#00c805; color:#04110a; border:0; border-radius:10px; padding:12px; font-weight:650; cursor:pointer; }
-  .err { color:#ff8a8a; font-size:13px; }
+  :root { color-scheme: dark; --bg:#07090e; --panel:#0f131c; --line:#1b2231; --text:#e7ebf3; --muted:#8a93a8; --accent:#00d18b; --accent2:#6ea8ff; --warn:#f5b759; --bad:#ff7a7a; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:radial-gradient(1200px 600px at 10% -10%, #112a22 0%, var(--bg) 60%); color:var(--text); min-height:100vh; }
+  header { padding:22px 28px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; }
+  .brand { display:flex; gap:12px; align-items:center; }
+  .logo { width:34px; height:34px; border-radius:10px; background:linear-gradient(135deg,var(--accent),var(--accent2)); display:grid; place-items:center; color:#04110a; font-weight:800; }
+  h1 { font-size:18px; margin:0; }
+  .muted { color:var(--muted); font-size:12.5px; }
+  .pill { font-size:12px; padding:6px 10px; border-radius:999px; border:1px solid var(--line); color:var(--muted); }
+  .pill.live { color:var(--accent); border-color:#1d4a3c; }
+  .pill.sample { color:var(--warn); border-color:#4d3d1d; }
+  main { padding:24px 28px; max-width:1180px; margin:0 auto; display:grid; gap:18px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px 18px; }
+  .label { color:var(--muted); font-size:11.5px; text-transform:uppercase; letter-spacing:.07em; }
+  .value { font-size:24px; font-weight:650; margin-top:6px; font-variant-numeric:tabular-nums; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  @media (max-width:820px){ .grid2{ grid-template-columns:1fr; } }
+  table { width:100%; border-collapse:collapse; font-size:13.5px; }
+  th, td { text-align:left; padding:9px 8px; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:500; }
+  a { color:var(--accent2); }
+  .bar { height:10px; border-radius:6px; background:#162031; overflow:hidden; }
+  .bar > div { height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); }
+  .venue { display:grid; gap:12px; }
+  .venue-row { display:grid; gap:6px; }
+  .venue-top { display:flex; justify-content:space-between; font-size:13px; }
+  .chart { display:flex; align-items:flex-end; gap:6px; height:140px; padding-top:8px; }
+  .chart .col { flex:1; background:linear-gradient(180deg,var(--accent),#0d6b4b); border-radius:6px 6px 2px 2px; min-height:2px; position:relative; }
+  .chart .col span { position:absolute; bottom:-18px; left:0; right:0; text-align:center; font-size:10px; color:var(--muted); }
+  .note { font-size:12.5px; color:var(--muted); line-height:1.5; }
+  .swap { display:grid; gap:12px; }
+  input { background:#090c13; color:var(--text); border:1px solid #242d40; border-radius:10px; padding:10px 12px; font-size:14px; }
+  button { background:var(--accent); color:#04110a; border:0; border-radius:10px; padding:11px 14px; font-weight:650; cursor:pointer; }
+  .err { color:var(--bad); font-size:13px; }
+  footer { color:var(--muted); font-size:12px; text-align:center; padding:8px 0 28px; }
 </style>
 </head>
 <body>
 <header>
-  <div>
-    <h1>Stoa on Robinhood Chain</h1>
-    <div class="muted">Chain ID 4663 · StoaRouter 0x2F2804fad735a38015650f32f95Ad5E08D6B3eE5 · Data from Blockscout API</div>
+  <div class="brand">
+    <div class="logo">S</div>
+    <div>
+      <h1>Stoa Analytics Dashboard <span class="muted">V1</span></h1>
+      <div class="muted">Robinhood Chain · Chain ID 4663 · Router <span id="routerAddr"></span></div>
+    </div>
   </div>
-  <div class="muted" id="status">Loading…</div>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <span class="pill" id="mode">Connecting…</span>
+    <span class="pill" id="status">Loading…</span>
+  </div>
 </header>
 
 <main>
   <section class="cards">
-    <div class="card"><div class="label">Router transactions (latest 100)</div><div class="value" id="txCount">–</div></div>
+    <div class="card"><div class="label">Router txs (latest 100)</div><div class="value" id="txCount">–</div></div>
+    <div class="card"><div class="label">Failed txs</div><div class="value" id="failCount">–</div></div>
     <div class="card"><div class="label">Unique senders</div><div class="value" id="traders">–</div></div>
-    <div class="card"><div class="label">Latest tx</div><div class="value" id="latest" style="font-size:16px">–</div></div>
+    <div class="card"><div class="label">Est. swap volume (USD)</div><div class="value" id="volUsd">–</div></div>
+    <div class="card"><div class="label">Latest tx (UTC)</div><div class="value" id="latest" style="font-size:14px">–</div></div>
+  </section>
+
+  <section class="grid2">
+    <div class="card">
+      <div class="label">Daily tx count (last 7 days)</div>
+      <div class="chart" id="chart"></div>
+      <div style="height:18px"></div>
+    </div>
+    <div class="card">
+      <div class="label">Venue breakdown</div>
+      <div class="venue" id="venues" style="margin-top:12px"></div>
+      <p class="note">Venue attribution is by the transaction target address. Only addresses listed in VENUES in this file are attributed. Unlisted targets are counted as Other. Per-venue USD volume is not decoded yet.</p>
+    </div>
   </section>
 
   <section class="card">
-    <div class="label">Recent router transactions (live feed)</div>
+    <div class="label">Recent router transactions</div>
+    <div style="overflow-x:auto;margin-top:8px">
     <table>
-      <thead><tr><th>Time (UTC)</th><th>Sender</th><th>Tx</th><th>Status</th></tr></thead>
-      <tbody id="feed"><tr><td colspan="4" class="muted">Loading…</td></tr></tbody>
+      <thead><tr><th>Time (UTC)</th><th>Sender</th><th>Target</th><th>Venue</th><th>Value (ETH)</th><th>Est. USD</th><th>Tx</th><th>Status</th></tr></thead>
+      <tbody id="feed"><tr><td colspan="8" class="muted">Loading…</td></tr></tbody>
     </table>
+    </div>
+  </section>
+
+  <section class="card swap">
+    <div class="label">Quick swap via Stoa (referrer set)</div>
+    <div class="muted">Live quote from Stoa's public API with the referrer applied. The swap link format is not verified.</div>
+    <input id="amt" type="number" min="0" step="any" placeholder="Amount of ETH to sell" />
+    <div style="display:flex;gap:10px;flex-wrap:wrap"><button id="quote">Get quote</button><a id="swapLink" href="#" target="_blank" rel="noopener" style="align-self:center">Open on Stoa</a></div>
+    <div id="quoteOut" class="muted"></div>
   </section>
 
   <section class="card">
-    <div class="label">Venue breakdown</div>
-    <p class="muted">Not yet implemented. Per-venue volume needs decoding of swap data for each transaction.</p>
+    <div class="label">Settings</div>
+    <div class="muted" style="margin:6px 0 10px">ETH price used for USD estimates (USD per ETH). Edit to refresh the estimate.</div>
+    <input id="ethPrice" type="number" min="0" step="any" value="3000" style="max-width:200px" />
   </section>
 
-  <section class="swap">
-    <div class="label">Quick swap (referrer 0x1F0AE5e17084857C7D4Ef289C15fC5d043087019)</div>
-    <div class="muted">Live quote from Stoa's public API with your referrer set. The swap link format below is unverified.</div>
-    <input id="amt" type="number" min="0" step="any" placeholder="Amount of ETH to sell" />
-    <button id="quote">Get quote</button>
-    <div id="quoteOut" class="muted"></div>
-    <a id="swapLink" href="#" target="_blank" rel="noopener">Swap on Stoa</a>
-  </section>
+  <footer>Data: Blockscout API for Robinhood Chain (txlist). Sample data is shown when the API is unavailable and is labeled as such.</footer>
 </main>
 
 <script>
-const ROUTER = "0x2F2804fad735a38015650f32f95Ad5E08D6B3eE5";
-const REFERRER = "0x1F0AE5e17084857C7D4Ef289C15fC5d043087019";
-const USDG = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168";
-const EXPLORER = "https://robinhoodchain.blockscout.com";
+const CONFIG = {
+  chainId: 4663,
+  explorer: "https://robinhoodchain.blockscout.com",
+  router: "0x2F2804fad735a38015650f32f95Ad5E08D6B3eE5",
+  referrer: "0x1F0AE5e17084857C7D4Ef289C15fC5d043087019",
+  usdg: "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+  quoteApi: "https://stoadex.com/api/v1/quote",
+  swapUrl: "https://stoadex.com/",
+};
+// Venue targets. Fill in verified addresses only. Empty entries are not attributed.
+const VENUES = {
+  "Uniswap V3": [],
+  "Curve": [],
+  "Stoa Router": [CONFIG.router],
+};
 
 const $ = (id) => document.getElementById(id);
 const short = (a) => a ? a.slice(0, 6) + "…" + a.slice(-4) : "";
+const fmtUsd = (n) => "$" + (Number(n) || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
+
+function venueOf(to) {
+  const t = (to || "").toLowerCase();
+  for (const [name, list] of Object.entries(VENUES)) {
+    if (list.some((a) => a.toLowerCase() === t)) return name;
+  }
+  return "Other";
+}
+
+function sampleTxs() {
+  const now = Math.floor(Date.now() / 1000);
+  const senders = ["0x9a1c...", "0x3b7e", "0xf02d", "0x71aa"];
+  return Array.from({ length: 24 }, (_, i) => ({
+    hash: "0x" + (i + 1).toString(16).padStart(64, "0"),
+    from: "0x" + (0x1000 + i * 977).toString(16).padStart(40, "0"),
+    to: CONFIG.router,
+    timeStamp: String(now - i * 3600 * (1 + (i % 3))),
+    value: String(BigInt(Math.round((0.05 + (i % 5) * 0.12) * 1e18))),
+    isError: i % 9 === 0 ? "1" : "0",
+    _sample: true,
+  }));
+}
 
 async function loadTxs() {
+  let txs, live = true;
   try {
-    const url = `${EXPLORER}/api?module=account&action=txlist&address=${ROUTER}&sort=desc&page=1&offset=100`;
+    const url = `${CONFIG.explorer}/api?module=account&action=txlist&address=${CONFIG.router}&sort=desc&page=1&offset=100`;
     const res = await fetch(url);
     if (!res.ok) throw new Error("HTTP " + res.status);
     const json = await res.json();
-    const txs = Array.isArray(json.result) ? json.result : [];
-    $("txCount").textContent = txs.length.toLocaleString();
-    const senders = new Set(txs.map((t) => (t.from || "").toLowerCase()));
-    $("traders").textContent = senders.size.toLocaleString();
-    if (txs[0]) $("latest").textContent = new Date(Number(txs[0].timeStamp) * 1000).toUTCString();
-    $("feed").innerHTML = txs.slice(0, 25).map((t) => `
-      <tr>
-        <td>${new Date(Number(t.timeStamp) * 1000).toISOString().replace("T", " ").slice(0, 19)}</td>
-        <td>${short(t.from)}</td>
-        <td><a href="${EXPLORER}/tx/${t.hash}" target="_blank" rel="noopener">${short(t.hash)}</a></td>
-        <td>${t.isError === "0" ? "ok" : "failed"}</td>
-      </tr>`).join("") || `<tr><td colspan="4" class="muted">No transactions returned.</td></tr>`;
-    $("status").textContent = "Updated " + new Date().toUTCString();
+    txs = Array.isArray(json.result) ? json.result : [];
+    if (!txs.length) throw new Error("no transactions returned");
   } catch (e) {
-    $("status").textContent = "Data unavailable";
-    $("feed").innerHTML = `<tr><td colspan="4" class="err">Could not load Blockscout data: ${e.message}</td></tr>`;
+    live = false;
+    txs = sampleTxs();
+    $("status").textContent = "API unavailable: " + e.message;
   }
+  $("mode").textContent = live ? "Live · Blockscout" : "Sample data";
+  $("mode").className = "pill " + (live ? "live" : "sample");
+  if (live) $("status").textContent = "Updated " + new Date().toUTCString();
+
+  const ethPrice = Number($("ethPrice").value) || 0;
+  let volume = 0;
+  const venueCounts = {};
+  const perDay = {};
+  const senders = new Set();
+  let fails = 0;
+
+  const rows = txs.map((t) => {
+    const eth = Number(BigInt(t.value || "0")) / 1e18;
+    const usd = eth * ethPrice;
+    const venue = venueOf(t.to || CONFIG.router);
+    const failed = t.isError === "1";
+    if (!failed) volume += usd;
+    if (failed) fails++;
+    senders.add((t.from || "").toLowerCase());
+    venueCounts[venue] = (venueCounts[venue] || 0) + 1;
+    const day = new Date(Number(t.timeStamp) * 1000).toISOString().slice(0, 10);
+    perDay[day] = (perDay[day] || 0) + 1;
+    return { t, eth, usd, venue, failed };
+  });
+
+  $("txCount").textContent = txs.length.toLocaleString();
+  $("failCount").textContent = fails.toLocaleString();
+  $("traders").textContent = senders.size.toLocaleString();
+  $("volUsd").textContent = fmtUsd(volume);
+  if (txs[0]) $("latest").textContent = new Date(Number(txs[0].timeStamp) * 1000).toUTCString();
+
+  $("feed").innerHTML = rows.slice(0, 25).map(({ t, eth, usd, venue, failed }) => `
+    <tr>
+      <td>${new Date(Number(t.timeStamp) * 1000).toISOString().replace("T", " ").slice(0, 19)}</td>
+      <td>${short(t.from)}</td>
+      <td>${short(t.to)}</td>
+      <td>${venue}</td>
+      <td>${eth.toFixed(4)}</td>
+      <td>${fmtUsd(usd)}</td>
+      <td>${t._sample ? "sample" : `<a href="${CONFIG.explorer}/tx/${t.hash}" target="_blank" rel="noopener">${short(t.hash)}</a>`}</td>
+      <td>${failed ? '<span class="err">failed</span>' : "ok"}</td>
+    </tr>`).join("") || `<tr><td colspan="8" class="muted">No transactions.</td></tr>`;
+
+  const total = rows.length || 1;
+  $("venues").innerHTML = Object.entries(venueCounts).sort((a, b) => b[1] - a[1]).map(([name, n]) => `
+    <div class="venue-row">
+      <div class="venue-top"><span>${name}</span><span class="muted">${n} txs · ${((n / total) * 100).toFixed(0)}%</span></div>
+      <div class="bar"><div style="width:${((n / total) * 100).toFixed(1)}%"></div></div>
+    </div>`).join("");
+
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+    days.push([d.slice(5), perDay[d] || 0]);
+  }
+  const max = Math.max(1, ...days.map((d) => d[1]));
+  $("chart").innerHTML = days.map(([d, n]) => `<div class="col" style="height:${(n / max) * 100}%" title="${d}: ${n}"><span>${d}</span></div>`).join("");
 }
 
+$("routerAddr").textContent = short(CONFIG.router);
 $("quote").addEventListener("click", async () => {
   const amt = Number($("amt").value);
   if (!amt || amt <= 0) { $("quoteOut").textContent = "Enter an amount."; return; }
   const wei = BigInt(Math.round(amt * 1e18)).toString();
   const qs = new URLSearchParams({
-    chain: "robinhood", sellToken: "native", buyToken: USDG,
-    amount: wei, slippageBps: "50", taker: REFERRER, referrer: REFERRER,
+    chain: "robinhood", sellToken: "native", buyToken: CONFIG.usdg,
+    amount: wei, slippageBps: "50", taker: CONFIG.referrer, referrer: CONFIG.referrer,
   });
   try {
-    const res = await fetch("https://stoadex.com/api/v1/quote?" + qs.toString());
+    const res = await fetch(CONFIG.quoteApi + "?" + qs.toString());
     const q = await res.json();
     if (!res.ok || !q.amountOut) throw new Error(q.error || "no quote");
     $("quoteOut").textContent = `Estimated out: ${(Number(q.amountOut) / 1e6).toFixed(4)} USDG (min ${(Number(q.minOut) / 1e6).toFixed(4)})`;
   } catch (e) {
     $("quoteOut").textContent = "Quote failed: " + e.message;
   }
-  $("swapLink").href = "https://stoadex.com/?chain=robinhood&sell=native&buy=" + USDG + "&amount=" + amt + "&referrer=" + REFERRER;
+  $("swapLink").href = CONFIG.swapUrl + "?chain=robinhood&sell=native&buy=" + CONFIG.usdg + "&amount=" + amt + "&referrer=" + CONFIG.referrer;
 });
+$("ethPrice").addEventListener("change", () => loadTxs());
 
 loadTxs();
 </script>
