@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Stoa on Robinhood Chain · Public Analytics</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#0b0d12; color:#e8ebf2; }
+  header { padding:24px; border-bottom:1px solid #1d2230; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
+  h1 { font-size:20px; margin:0; }
+  .muted { color:#8b93a7; font-size:13px; }
+  main { padding:24px; max-width:1100px; margin:0 auto; display:grid; gap:20px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; }
+  .card { background:#131722; border:1px solid #1d2230; border-radius:14px; padding:18px; }
+  .card .label { color:#8b93a7; font-size:12px; text-transform:uppercase; letter-spacing:.06em; }
+  .card .value { font-size:26px; font-weight:650; margin-top:6px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:10px 8px; border-bottom:1px solid #1d2230; }
+  th { color:#8b93a7; font-weight:500; }
+  a { color:#7aa2ff; }
+  .swap { background:#131722; border:1px solid #1d2230; border-radius:14px; padding:18px; display:grid; gap:12px; }
+  input { background:#0b0d12; color:#e8ebf2; border:1px solid #2a3145; border-radius:10px; padding:10px; font-size:14px; }
+  button { background:#00c805; color:#04110a; border:0; border-radius:10px; padding:12px; font-weight:650; cursor:pointer; }
+  .err { color:#ff8a8a; font-size:13px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Stoa on Robinhood Chain</h1>
+    <div class="muted">Chain ID 4663 · StoaRouter 0x2F2804fad735a38015650f32f95Ad5E08D6B3eE5 · Data from Blockscout API</div>
+  </div>
+  <div class="muted" id="status">Loading…</div>
+</header>
+
+<main>
+  <section class="cards">
+    <div class="card"><div class="label">Router transactions (latest 100)</div><div class="value" id="txCount">–</div></div>
+    <div class="card"><div class="label">Unique senders</div><div class="value" id="traders">–</div></div>
+    <div class="card"><div class="label">Latest tx</div><div class="value" id="latest" style="font-size:16px">–</div></div>
+  </section>
+
+  <section class="card">
+    <div class="label">Recent router transactions (live feed)</div>
+    <table>
+      <thead><tr><th>Time (UTC)</th><th>Sender</th><th>Tx</th><th>Status</th></tr></thead>
+      <tbody id="feed"><tr><td colspan="4" class="muted">Loading…</td></tr></tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <div class="label">Venue breakdown</div>
+    <p class="muted">Not yet implemented. Per-venue volume needs decoding of swap data for each transaction.</p>
+  </section>
+
+  <section class="swap">
+    <div class="label">Quick swap (referrer 0x1F0AE5e17084857C7D4Ef289C15fC5d043087019)</div>
+    <div class="muted">Live quote from Stoa's public API with your referrer set. The swap link format below is unverified.</div>
+    <input id="amt" type="number" min="0" step="any" placeholder="Amount of ETH to sell" />
+    <button id="quote">Get quote</button>
+    <div id="quoteOut" class="muted"></div>
+    <a id="swapLink" href="#" target="_blank" rel="noopener">Swap on Stoa</a>
+  </section>
+</main>
+
+<script>
+const ROUTER = "0x2F2804fad735a38015650f32f95Ad5E08D6B3eE5";
+const REFERRER = "0x1F0AE5e17084857C7D4Ef289C15fC5d043087019";
+const USDG = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168";
+const EXPLORER = "https://robinhoodchain.blockscout.com";
+
+const $ = (id) => document.getElementById(id);
+const short = (a) => a ? a.slice(0, 6) + "…" + a.slice(-4) : "";
+
+async function loadTxs() {
+  try {
+    const url = `${EXPLORER}/api?module=account&action=txlist&address=${ROUTER}&sort=desc&page=1&offset=100`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const json = await res.json();
+    const txs = Array.isArray(json.result) ? json.result : [];
+    $("txCount").textContent = txs.length.toLocaleString();
+    const senders = new Set(txs.map((t) => (t.from || "").toLowerCase()));
+    $("traders").textContent = senders.size.toLocaleString();
+    if (txs[0]) $("latest").textContent = new Date(Number(txs[0].timeStamp) * 1000).toUTCString();
+    $("feed").innerHTML = txs.slice(0, 25).map((t) => `
+      <tr>
+        <td>${new Date(Number(t.timeStamp) * 1000).toISOString().replace("T", " ").slice(0, 19)}</td>
+        <td>${short(t.from)}</td>
+        <td><a href="${EXPLORER}/tx/${t.hash}" target="_blank" rel="noopener">${short(t.hash)}</a></td>
+        <td>${t.isError === "0" ? "ok" : "failed"}</td>
+      </tr>`).join("") || `<tr><td colspan="4" class="muted">No transactions returned.</td></tr>`;
+    $("status").textContent = "Updated " + new Date().toUTCString();
+  } catch (e) {
+    $("status").textContent = "Data unavailable";
+    $("feed").innerHTML = `<tr><td colspan="4" class="err">Could not load Blockscout data: ${e.message}</td></tr>`;
+  }
+}
+
+$("quote").addEventListener("click", async () => {
+  const amt = Number($("amt").value);
+  if (!amt || amt <= 0) { $("quoteOut").textContent = "Enter an amount."; return; }
+  const wei = BigInt(Math.round(amt * 1e18)).toString();
+  const qs = new URLSearchParams({
+    chain: "robinhood", sellToken: "native", buyToken: USDG,
+    amount: wei, slippageBps: "50", taker: REFERRER, referrer: REFERRER,
+  });
+  try {
+    const res = await fetch("https://stoadex.com/api/v1/quote?" + qs.toString());
+    const q = await res.json();
+    if (!res.ok || !q.amountOut) throw new Error(q.error || "no quote");
+    $("quoteOut").textContent = `Estimated out: ${(Number(q.amountOut) / 1e6).toFixed(4)} USDG (min ${(Number(q.minOut) / 1e6).toFixed(4)})`;
+  } catch (e) {
+    $("quoteOut").textContent = "Quote failed: " + e.message;
+  }
+  $("swapLink").href = "https://stoadex.com/?chain=robinhood&sell=native&buy=" + USDG + "&amount=" + amt + "&referrer=" + REFERRER;
+});
+
+loadTxs();
+</script>
+</body>
+</html>
