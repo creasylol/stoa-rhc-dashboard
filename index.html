@@ -1,251 +1,154 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Stoa Analytics Dashboard V1 · Robinhood Chain</title>
-<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
-<style>
-  :root { color-scheme: dark; --bg:#07090e; --panel:#0f131c; --line:#1b2231; --text:#e7ebf3; --muted:#8a93a8; --accent:#00d18b; --accent2:#6ea8ff; --warn:#f5b759; --bad:#ff7a7a; }
-  * { box-sizing:border-box; }
-  body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:radial-gradient(1200px 600px at 10% -10%, #112a22 0%, var(--bg) 60%); color:var(--text); min-height:100vh; }
-  header { padding:22px 28px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; }
-  .brand { display:flex; gap:12px; align-items:center; }
-  .logo { width:34px; height:34px; border-radius:10px; background:linear-gradient(135deg,var(--accent),var(--accent2)); display:grid; place-items:center; color:#04110a; font-weight:800; }
-  h1 { font-size:18px; margin:0; }
-  .muted { color:var(--muted); font-size:12.5px; }
-  .pill { font-size:12px; padding:6px 10px; border-radius:999px; border:1px solid var(--line); color:var(--muted); }
-  .pill.live { color:var(--accent); border-color:#1d4a3c; }
-  .pill.sample { color:var(--warn); border-color:#4d3d1d; }
-  main { padding:24px 28px; max-width:1180px; margin:0 auto; display:grid; gap:18px; }
-  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; }
-  .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px 18px; }
-  .label { color:var(--muted); font-size:11.5px; text-transform:uppercase; letter-spacing:.07em; }
-  .value { font-size:24px; font-weight:650; margin-top:6px; font-variant-numeric:tabular-nums; }
-  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
-  @media (max-width:820px){ .grid2{ grid-template-columns:1fr; } }
-  table { width:100%; border-collapse:collapse; font-size:13.5px; }
-  th, td { text-align:left; padding:9px 8px; border-bottom:1px solid var(--line); }
-  th { color:var(--muted); font-weight:500; }
-  a { color:var(--accent2); }
-  .bar { height:10px; border-radius:6px; background:#162031; overflow:hidden; }
-  .bar > div { height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); }
-  .venue { display:grid; gap:12px; }
-  .venue-row { display:grid; gap:6px; }
-  .venue-top { display:flex; justify-content:space-between; font-size:13px; }
-  .chart { display:flex; align-items:flex-end; gap:6px; height:140px; padding-top:8px; }
-  .chart .col { flex:1; background:linear-gradient(180deg,var(--accent),#0d6b4b); border-radius:6px 6px 2px 2px; min-height:2px; position:relative; }
-  .chart .col span { position:absolute; bottom:-18px; left:0; right:0; text-align:center; font-size:10px; color:var(--muted); }
-  .note { font-size:12.5px; color:var(--muted); line-height:1.5; }
-  .swap { display:grid; gap:12px; }
-  input { background:#090c13; color:var(--text); border:1px solid #242d40; border-radius:10px; padding:10px 12px; font-size:14px; }
-  button { background:var(--accent); color:#04110a; border:0; border-radius:10px; padding:11px 14px; font-weight:650; cursor:pointer; }
-  .err { color:var(--bad); font-size:13px; }
-  footer { color:var(--muted); font-size:12px; text-align:center; padding:8px 0 28px; }
-</style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stoa Ledger: live swap dashboard for Stoa on Robinhood Chain</title>
+<meta name="description" content="Volume, traders, routes per venue, referrers and every swap routed through the Stoa router on Robinhood Chain, read live from the chain. Open source.">
+<meta name="theme-color" content="#d9edf9">
+<meta property="og:title" content="Stoa Ledger: every swap Stoa has routed on Robinhood Chain">
+<meta property="og:description" content="Live volume, traders, venue routing and referrers for the Stoa router. Read straight from the chain, open source.">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header>
-  <div class="brand">
-    <div class="logo">S</div>
-    <div>
-      <h1>Stoa Analytics Dashboard <span class="muted">V1</span></h1>
-      <div class="muted">Robinhood Chain · Chain ID 4663 · Router <span id="routerAddr"></span></div>
-    </div>
-  </div>
-  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-    <span class="pill" id="mode">Connecting…</span>
-    <span class="pill" id="status">Loading…</span>
+<header class="bar">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Stoa Ledger, top of page">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="2" y="3" width="28" height="4" rx="1.5" fill="#0b4670"/><rect x="5" y="7" width="22" height="2.5" fill="#2a8fd0"/><rect x="7" y="10" width="4" height="15" rx="1" fill="#0d6aa8"/><rect x="14" y="10" width="4" height="15" rx="1" fill="#0d6aa8"/><rect x="21" y="10" width="4" height="15" rx="1" fill="#0d6aa8"/><rect x="2" y="26" width="28" height="3.5" rx="1.5" fill="#0b4670"/></svg>
+      Stoa Ledger
+    </a>
+    <nav aria-label="Sections">
+      <a href="#volume">Volume</a><a href="#routes">Routes</a><a href="#people">People</a><a href="#swaps">Swaps</a><a href="#swap">Swap</a><a href="#method">Method</a>
+    </nav>
+    <span class="grow"></span>
+    <button class="btn ghost" id="reload" type="button">Refresh</button>
+    <a class="btn primary" id="trade-top" href="https://stoadex.com/trade" rel="noopener">Trade on Stoa</a>
   </div>
 </header>
 
-<main>
-  <section class="cards">
-    <div class="card"><div class="label">Router txs (latest 100)</div><div class="value" id="txCount">–</div></div>
-    <div class="card"><div class="label">Failed txs</div><div class="value" id="failCount">–</div></div>
-    <div class="card"><div class="label">Unique senders</div><div class="value" id="traders">–</div></div>
-    <div class="card"><div class="label">Est. swap volume (USD)</div><div class="value" id="volUsd">–</div></div>
-    <div class="card"><div class="label">Latest tx (UTC)</div><div class="value" id="latest" style="font-size:14px">–</div></div>
+<div class="hero" id="top">
+  <div class="wrap">
+    <span class="pill" id="status" role="status" aria-live="polite"><span class="dot"></span><span id="status-text">Starting up</span></span>
+    <h1>Every swap Stoa has routed on <em>Robinhood Chain</em></h1>
+    <p class="lede">Volume, traders, the venues each swap went through and who referred it. Everything is read from the router’s own events, counted the way <a href="https://stoadex.com/stats" rel="noopener">stoadex.com/stats</a> counts, and open source so you can check it.</p>
+  </div>
+</div>
+
+<main class="wrap">
+  <dl class="kpis" id="kpis" aria-label="Headline numbers"></dl>
+
+  <section id="volume">
+    <div class="head">
+      <div><h2>Volume by day</h2><p class="sub" style="margin:0">One column per UTC day. Hover or tab to a column for the exact figure.</p></div>
+      <div class="controls">
+        <div class="seg" role="group" aria-label="Metric"><button type="button" data-metric="usd" aria-pressed="true">Volume</button><button type="button" data-metric="swaps" aria-pressed="false">Swaps</button></div>
+        <div class="seg" role="group" aria-label="Range"><button type="button" data-range="14" aria-pressed="false">14 days</button><button type="button" data-range="30" aria-pressed="true">30 days</button><button type="button" data-range="0" aria-pressed="false">All</button></div>
+      </div>
+    </div>
+    <div class="card chart-wrap" id="chart-card">
+      <div class="chart-scroll" id="chart"></div>
+      <div class="tip" id="tip" role="tooltip"></div>
+    </div>
   </section>
 
-  <section class="grid2">
-    <div class="card">
-      <div class="label">Daily tx count (last 7 days)</div>
-      <div class="chart" id="chart"></div>
-      <div style="height:18px"></div>
+  <section id="routes">
+    <h2>Where swaps are routed</h2>
+    <p class="sub">The router picks the best venue for each trade. A swap counts once for every venue it touched, so a two-hop swap shows up under both.</p>
+    <div class="grid2">
+      <div class="card"><h3>Venues</h3><p class="sub">Share of all swaps that used each venue.</p><div class="rows" id="venues"></div></div>
+      <div style="display:grid;gap:20px;align-content:start">
+        <div class="card"><h3>Route shape</h3><p class="sub">Direct against hopping through ETH.</p><div id="shape"></div></div>
+        <div class="card"><h3>Two-hop paths</h3><p class="sub">First venue, then second.</p><div class="tablewrap" id="legs"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="people">
+    <h2>Traders, tokens and referrers</h2>
+    <p class="sub">A trader is the address that received the output. Referrers earn 10% of Stoa’s 2 bps fee.</p>
+    <div class="grid2 even">
+      <div class="card"><h3>Top traders</h3><p class="sub">By volume, all time.</p><div class="tablewrap" id="traders"></div></div>
+      <div class="card"><h3>Most bought tokens</h3><p class="sub">Excluding ETH and stablecoins.</p><div class="tablewrap" id="bought"></div></div>
+    </div>
+    <div class="card" style="margin-top:20px"><h3>Referrers</h3><p class="sub">Ranked by the volume they referred. Wallets counts distinct addresses that swapped $1 or more this UTC month, not counting the referrer itself.</p><div class="tablewrap" id="referrers"></div></div>
+    <div class="card" id="ours" style="margin-top:20px"></div>
+  </section>
+
+  <section id="swaps">
+    <div class="head">
+      <div><h2>Every swap</h2><p class="sub" style="margin:0">Search, filter and sort. Select a row for the full route.</p></div>
+      <div class="controls"><button class="btn" id="csv" type="button">Download CSV</button></div>
     </div>
     <div class="card">
-      <div class="label">Venue breakdown</div>
-      <div class="venue" id="venues" style="margin-top:12px"></div>
-      <p class="note">Venue attribution is by the transaction target address. Only addresses listed in VENUES in this file are attributed. Unlisted targets are counted as Other. Per-venue USD volume is not decoded yet.</p>
+      <div class="controls" style="margin-bottom:14px">
+        <label>Search<input id="q" type="search" placeholder="Token, address or tx hash" autocomplete="off" style="min-width:230px"></label>
+        <label>Venue<select id="f-venue"><option value="">All venues</option></select></label>
+        <label>Referral<select id="f-ref"><option value="">All swaps</option><option value="ours">Mine</option><option value="any">Any referrer</option><option value="none">No referrer</option></select></label>
+        <label>Minimum USD<input id="f-min" type="number" min="0" step="1" placeholder="0" style="width:110px"></label>
+      </div>
+      <div class="tablewrap" id="swaps-table"></div>
+      <div class="pager"><span id="pager-info"></span><span><button class="btn" id="prev" type="button">Previous</button> <button class="btn" id="next" type="button">Next</button></span></div>
     </div>
   </section>
 
-  <section class="card">
-    <div class="label">Recent router transactions</div>
-    <div style="overflow-x:auto;margin-top:8px">
-    <table>
-      <thead><tr><th>Time (UTC)</th><th>Sender</th><th>Target</th><th>Venue</th><th>Value (ETH)</th><th>Est. USD</th><th>Tx</th><th>Status</th></tr></thead>
-      <tbody id="feed"><tr><td colspan="8" class="muted">Loading…</td></tr></tbody>
-    </table>
+  <section id="swap">
+    <h2>Swap here</h2>
+    <p class="sub">Get Stoa’s best route for any amount from its public API. Anything sent from this page names the builder’s address as referrer.</p>
+    <div class="card quote">
+      <div class="fields">
+        <label>Sell (ETH)<input id="q-amount" inputmode="decimal" value="0.01" autocomplete="off"></label>
+        <label>Buy<select id="q-token"></select></label>
+        <label id="q-custom-wrap" hidden>Token address<input id="q-custom" placeholder="0x…" autocomplete="off" spellcheck="false"></label>
+        <div class="controls">
+          <button class="btn primary" id="q-get" type="button">Get quote</button>
+          <button class="btn" id="q-connect" type="button">Connect wallet</button>
+        </div>
+        <div class="notice">Referrer on every swap from here: <span class="mono" id="q-ref"></span></div>
+      </div>
+      <div class="out" id="q-out" aria-live="polite"><p class="muted" style="margin:0">Quotes come from <span class="mono">stoadex.com/api/v1/quote</span> and expire in about 30 seconds.</p></div>
     </div>
   </section>
 
-  <section class="card swap">
-    <div class="label">Quick swap via Stoa (referrer set)</div>
-    <div class="muted">Live quote from Stoa's public API with the referrer applied. The swap link format is not verified.</div>
-    <input id="amt" type="number" min="0" step="any" placeholder="Amount of ETH to sell" />
-    <div style="display:flex;gap:10px;flex-wrap:wrap"><button id="quote">Get quote</button><a id="swapLink" href="#" target="_blank" rel="noopener" style="align-self:center">Open on Stoa</a></div>
-    <div id="quoteOut" class="muted"></div>
+  <section id="method" class="method">
+    <h2>How the numbers are made</h2>
+    <div class="grid2 even">
+      <div class="card">
+        <h3>Counting</h3>
+        <ul>
+          <li>The router emits one <code>Routed</code> event per settled swap, and a failed swap reverts and emits nothing. This page reads every one since block <span id="m-block"></span>, straight from the chain’s public RPC.</li>
+          <li>Each swap is valued once: on its USDG side if it has one, otherwise on its ETH side at the router’s own current quote for 0.01 ETH, otherwise at DexScreener’s current price. Swaps with no priced side are counted but left out of volume.</li>
+          <li>ETH volume uses the current ETH price for every day. Volume per venue is not additive, because a two-hop swap counts under both of its venues.</li>
+          <li>The fee estimate is 2 bps of volume, and a referrer’s share is 10% of that. Both are estimates, not FeeDistributor balances.</li>
+          <li>The page ships a snapshot in <code>data/stats.json</code>, refreshed by a GitHub Action, so it paints instantly, then catches up from the chain and keeps polling.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Check it yourself</h3>
+        <p class="sub">The same code runs in Node. This compares the totals against Stoa’s own stats API.</p>
+        <pre>git clone https://github.com/creasylol/stoa-rhc-dashboard
+cd stoa-rhc-dashboard
+node cli.mjs --compare
+npm test</pre>
+        <ul>
+          <li>Router <a class="mono" id="m-router" rel="noopener" href="#"></a></li>
+          <li>Event <span class="code">Routed(address indexed sender, address indexed to, address indexed referrer, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut, address mid, address venue1, address venue2)</span></li>
+          <li>Source: <a href="https://github.com/creasylol/stoa-rhc-dashboard" rel="noopener">github.com/creasylol/stoa-rhc-dashboard</a>, MIT licensed.</li>
+        </ul>
+      </div>
+    </div>
   </section>
-
-  <section class="card">
-    <div class="label">Settings</div>
-    <div class="muted" style="margin:6px 0 10px">ETH price used for USD estimates (USD per ETH). Edit to refresh the estimate.</div>
-    <input id="ethPrice" type="number" min="0" step="any" value="3000" style="max-width:200px" />
-  </section>
-
-  <footer>Data: Blockscout API for Robinhood Chain (txlist). Sample data is shown when the API is unavailable and is labeled as such.</footer>
 </main>
 
-<script>
-const CONFIG = {
-  chainId: 4663,
-  explorer: "https://robinhoodchain.blockscout.com",
-  router: "0x2F2804fad735a38015650f32f95Ad5E08D6B3eE5",
-  referrer: "0x1F0AE5e17084857C7D4Ef289C15fC5d043087019",
-  usdg: "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
-  quoteApi: "https://stoadex.com/api/v1/quote",
-  swapUrl: "https://stoadex.com/",
-};
-// Venue targets. Fill in verified addresses only. Empty entries are not attributed.
-const VENUES = {
-  "Uniswap V3": [],
-  "Curve": [],
-  "Stoa Router": [CONFIG.router],
-};
-
-const $ = (id) => document.getElementById(id);
-const short = (a) => a ? a.slice(0, 6) + "…" + a.slice(-4) : "";
-const fmtUsd = (n) => "$" + (Number(n) || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
-
-function venueOf(to) {
-  const t = (to || "").toLowerCase();
-  for (const [name, list] of Object.entries(VENUES)) {
-    if (list.some((a) => a.toLowerCase() === t)) return name;
-  }
-  return "Other";
-}
-
-function sampleTxs() {
-  const now = Math.floor(Date.now() / 1000);
-  const senders = ["0x9a1c...", "0x3b7e", "0xf02d", "0x71aa"];
-  return Array.from({ length: 24 }, (_, i) => ({
-    hash: "0x" + (i + 1).toString(16).padStart(64, "0"),
-    from: "0x" + (0x1000 + i * 977).toString(16).padStart(40, "0"),
-    to: CONFIG.router,
-    timeStamp: String(now - i * 3600 * (1 + (i % 3))),
-    value: String(BigInt(Math.round((0.05 + (i % 5) * 0.12) * 1e18))),
-    isError: i % 9 === 0 ? "1" : "0",
-    _sample: true,
-  }));
-}
-
-async function loadTxs() {
-  let txs, live = true;
-  try {
-    const url = `${CONFIG.explorer}/api?module=account&action=txlist&address=${CONFIG.router}&sort=desc&page=1&offset=100`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const json = await res.json();
-    txs = Array.isArray(json.result) ? json.result : [];
-    if (!txs.length) throw new Error("no transactions returned");
-  } catch (e) {
-    live = false;
-    txs = sampleTxs();
-    $("status").textContent = "API unavailable: " + e.message;
-  }
-  $("mode").textContent = live ? "Live · Blockscout" : "Sample data";
-  $("mode").className = "pill " + (live ? "live" : "sample");
-  if (live) $("status").textContent = "Updated " + new Date().toUTCString();
-
-  const ethPrice = Number($("ethPrice").value) || 0;
-  let volume = 0;
-  const venueCounts = {};
-  const perDay = {};
-  const senders = new Set();
-  let fails = 0;
-
-  const rows = txs.map((t) => {
-    const eth = Number(BigInt(t.value || "0")) / 1e18;
-    const usd = eth * ethPrice;
-    const venue = venueOf(t.to || CONFIG.router);
-    const failed = t.isError === "1";
-    if (!failed) volume += usd;
-    if (failed) fails++;
-    senders.add((t.from || "").toLowerCase());
-    venueCounts[venue] = (venueCounts[venue] || 0) + 1;
-    const day = new Date(Number(t.timeStamp) * 1000).toISOString().slice(0, 10);
-    perDay[day] = (perDay[day] || 0) + 1;
-    return { t, eth, usd, venue, failed };
-  });
-
-  $("txCount").textContent = txs.length.toLocaleString();
-  $("failCount").textContent = fails.toLocaleString();
-  $("traders").textContent = senders.size.toLocaleString();
-  $("volUsd").textContent = fmtUsd(volume);
-  if (txs[0]) $("latest").textContent = new Date(Number(txs[0].timeStamp) * 1000).toUTCString();
-
-  $("feed").innerHTML = rows.slice(0, 25).map(({ t, eth, usd, venue, failed }) => `
-    <tr>
-      <td>${new Date(Number(t.timeStamp) * 1000).toISOString().replace("T", " ").slice(0, 19)}</td>
-      <td>${short(t.from)}</td>
-      <td>${short(t.to)}</td>
-      <td>${venue}</td>
-      <td>${eth.toFixed(4)}</td>
-      <td>${fmtUsd(usd)}</td>
-      <td>${t._sample ? "sample" : `<a href="${CONFIG.explorer}/tx/${t.hash}" target="_blank" rel="noopener">${short(t.hash)}</a>`}</td>
-      <td>${failed ? '<span class="err">failed</span>' : "ok"}</td>
-    </tr>`).join("") || `<tr><td colspan="8" class="muted">No transactions.</td></tr>`;
-
-  const total = rows.length || 1;
-  $("venues").innerHTML = Object.entries(venueCounts).sort((a, b) => b[1] - a[1]).map(([name, n]) => `
-    <div class="venue-row">
-      <div class="venue-top"><span>${name}</span><span class="muted">${n} txs · ${((n / total) * 100).toFixed(0)}%</span></div>
-      <div class="bar"><div style="width:${((n / total) * 100).toFixed(1)}%"></div></div>
-    </div>`).join("");
-
-  const days = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
-    days.push([d.slice(5), perDay[d] || 0]);
-  }
-  const max = Math.max(1, ...days.map((d) => d[1]));
-  $("chart").innerHTML = days.map(([d, n]) => `<div class="col" style="height:${(n / max) * 100}%" title="${d}: ${n}"><span>${d}</span></div>`).join("");
-}
-
-$("routerAddr").textContent = short(CONFIG.router);
-$("quote").addEventListener("click", async () => {
-  const amt = Number($("amt").value);
-  if (!amt || amt <= 0) { $("quoteOut").textContent = "Enter an amount."; return; }
-  const wei = BigInt(Math.round(amt * 1e18)).toString();
-  const qs = new URLSearchParams({
-    chain: "robinhood", sellToken: "native", buyToken: CONFIG.usdg,
-    amount: wei, slippageBps: "50", taker: CONFIG.referrer, referrer: CONFIG.referrer,
-  });
-  try {
-    const res = await fetch(CONFIG.quoteApi + "?" + qs.toString());
-    const q = await res.json();
-    if (!res.ok || !q.amountOut) throw new Error(q.error || "no quote");
-    $("quoteOut").textContent = `Estimated out: ${(Number(q.amountOut) / 1e6).toFixed(4)} USDG (min ${(Number(q.minOut) / 1e6).toFixed(4)})`;
-  } catch (e) {
-    $("quoteOut").textContent = "Quote failed: " + e.message;
-  }
-  $("swapLink").href = CONFIG.swapUrl + "?chain=robinhood&sell=native&buy=" + CONFIG.usdg + "&amount=" + amt + "&referrer=" + CONFIG.referrer;
-});
-$("ethPrice").addEventListener("change", () => loadTxs());
-
-loadTxs();
-</script>
+<footer>
+  <div class="wrap">
+    <span>Independent community dashboard for Stoa. Not run or endorsed by Stoa. Nothing here is financial advice.</span>
+    <span><a href="https://stoadex.com" rel="noopener">stoadex.com</a>, <a href="https://robinhoodchain.blockscout.com" rel="noopener">Blockscout</a></span>
+  </div>
+</footer>
+<script type="module" src="src/app.js"></script>
 </body>
 </html>

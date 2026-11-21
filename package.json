@@ -1,0 +1,14 @@
+{
+  "name": "stoa-rhc-dashboard",
+  "version": "2.0.0",
+  "description": "Live dashboard for every swap routed through the Stoa router on Robinhood Chain",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test tests/core.test.mjs tests/ui.test.mjs",
+    "verify": "node cli.mjs --compare",
+    "snapshot": "node cli.mjs --out data/stats.json --compare"
+  },
+  "devDependencies": { "jsdom": "^25.0.0" },
+  "engines": { "node": ">=18" }
+}
